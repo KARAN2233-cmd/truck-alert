@@ -61,7 +61,8 @@ $('go').onclick = async () => {
       method: 'POST',
       body: JSON.stringify({ action: 'registerToken', email, password, token, device: navigator.userAgent.slice(0, 90) })
     });
-    const out = await res.json();
+    const raw = await res.text();
+    let out; try { out = JSON.parse(raw); } catch { throw new Error('Server said: ' + raw.slice(0, 150)); }
     if (!out.success) throw new Error(out.error || 'Could not save this device.');
     say('Done. This phone will now get alerts for your steps.');
   } catch (e) { say(e.message, true); }
