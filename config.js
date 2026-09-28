@@ -3,11 +3,11 @@ self.APP_CONFIG = {
 
   // Firebase console → Project settings → General → Your apps → SDK setup and configuration → Config
   firebase: {
-    apiKey:            '',
-    authDomain:        '',
+    apiKey:            'AIzaSyDMpDCn-4YmhnJ5hM4GLoNN8K9mLdACiJA',
+    authDomain:        'truck-order-notification.firebaseapp.com',
     projectId:         'truck-order-notification',
-    messagingSenderId: '',
-    appId:             ''
+    messagingSenderId: '839711547379',
+    appId:             '1:839711547379:web:0197cc64ed9a2f392ffc86'
   },
 
   // Firebase console → Project settings → Cloud Messaging → Web Push certificates (public key)
