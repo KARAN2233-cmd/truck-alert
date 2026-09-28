@@ -24,11 +24,9 @@
 <body>
 <main>
   <h1>Get order alerts on this phone</h1>
-  <p class="lead">Sign in with your Orders Truck Load login. Alerts for your steps will arrive on this device.</p>
+  <p class="lead">Enter your work email. Alerts for your steps will arrive on this device.</p>
   <label for="email">Email</label>
   <input id="email" type="email" autocomplete="email">
-  <label for="pwd">Password</label>
-  <input id="pwd" type="password" autocomplete="current-password">
   <button id="go">Turn on alerts</button>
   <p id="msg" role="status"></p>
 </main>
@@ -42,9 +40,9 @@ const $ = id => document.getElementById(id);
 const say = (t, bad) => { $('msg').textContent = t; $('msg').className = bad ? 'bad' : 'ok'; };
 
 $('go').onclick = async () => {
-  const email = $('email').value.trim(), password = $('pwd').value;
+  const email = $('email').value.trim();
   if (!C.gasUrl || !C.vapidKey || !C.firebase.apiKey) return say('config.js is not filled in yet.', true);
-  if (!email || !password) return say('Enter your email and password.', true);
+  if (!email) return say('Enter your email.', true);
   $('go').disabled = true; say('');
   try {
     if (!('serviceWorker' in navigator) || !('Notification' in window))
@@ -53,16 +51,20 @@ $('go').onclick = async () => {
       throw new Error('Notifications are blocked. Allow them in the browser settings, then try again.');
 
     if (!firebase.apps.length) firebase.initializeApp(C.firebase);
+
     await navigator.serviceWorker.register('firebase-messaging-sw.js');
-    const reg   = await navigator.serviceWorker.ready;   // resolves only once the worker is ACTIVE
+    const reg   = await navigator.serviceWorker.ready;   // waits until the worker is ACTIVE
     const token = await firebase.messaging().getToken({ vapidKey: C.vapidKey, serviceWorkerRegistration: reg });
+    if (!token) throw new Error('Could not get a device token.');
 
     const res = await fetch(C.gasUrl, {         // no custom headers → no CORS preflight
       method: 'POST',
-      body: JSON.stringify({ action: 'registerToken', email, password, token, device: navigator.userAgent.slice(0, 90) })
+      body: JSON.stringify({ action: 'registerToken', email, token, device: navigator.userAgent.slice(0, 90) })
     });
     const raw = await res.text();
-    let out; try { out = JSON.parse(raw); } catch { throw new Error('Server said: ' + raw.slice(0, 150)); }
+    let out;
+    try { out = JSON.parse(raw); }
+    catch { throw new Error('Server said: ' + raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 150)); }
     if (!out.success) throw new Error(out.error || 'Could not save this device.');
     say('Done. This phone will now get alerts for your steps.');
   } catch (e) { say(e.message, true); }
