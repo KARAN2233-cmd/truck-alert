@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Truck Load alerts</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Condensed:wght@800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0}
+  body{min-height:100vh;display:grid;place-items:center;padding:20px;background:#0b0d12;color:#e2e8f0;font:15px/1.5 Barlow,sans-serif}
+  main{width:100%;max-width:380px}
+  h1{font:800 26px/1.15 'Barlow Condensed',sans-serif;letter-spacing:.5px;color:#fbbf24;margin-bottom:8px}
+  p.lead{color:#94a3b8;margin-bottom:22px}
+  label{display:block;font-weight:600;font-size:13px;margin:0 0 6px}
+  input{width:100%;padding:12px 14px;margin-bottom:16px;background:#111420;border:1px solid #323c58;border-radius:10px;color:inherit;font:inherit}
+  input:focus{outline:2px solid #f59e0b;outline-offset:1px}
+  button{width:100%;padding:13px;border:0;border-radius:10px;background:#f59e0b;color:#0b0d12;font:800 17px 'Barlow Condensed',sans-serif;letter-spacing:.5px;cursor:pointer}
+  button:disabled{opacity:.5}
+  #msg{margin-top:16px;min-height:22px}
+  .ok{color:#10b981}.bad{color:#ef4444}
+</style>
+</head>
+<body>
+<main>
+  <h1>Get order alerts on this phone</h1>
+  <p class="lead">Sign in with your Orders Truck Load login. Alerts for your steps will arrive on this device.</p>
+  <label for="email">Email</label>
+  <input id="email" type="email" autocomplete="email">
+  <label for="pwd">Password</label>
+  <input id="pwd" type="password" autocomplete="current-password">
+  <button id="go">Turn on alerts</button>
+  <p id="msg" role="status"></p>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<script src="config.js"></script>
+<script>
+const C = self.APP_CONFIG;
+const $ = id => document.getElementById(id);
+const say = (t, bad) => { $('msg').textContent = t; $('msg').className = bad ? 'bad' : 'ok'; };
+
+$('go').onclick = async () => {
+  const email = $('email').value.trim(), password = $('pwd').value;
+  if (!C.gasUrl || !C.vapidKey || !C.firebase.apiKey) return say('config.js is not filled in yet.', true);
+  if (!email || !password) return say('Enter your email and password.', true);
+  $('go').disabled = true; say('');
+  try {
+    if (!('serviceWorker' in navigator) || !('Notification' in window))
+      throw new Error('This browser cannot receive alerts. On iPhone, add this page to the Home Screen and open it from there.');
+    if (await Notification.requestPermission() !== 'granted')
+      throw new Error('Notifications are blocked. Allow them in the browser settings, then try again.');
+
+    if (!firebase.apps.length) firebase.initializeApp(C.firebase);
+    const reg   = await navigator.serviceWorker.register('firebase-messaging-sw.js');
+    const token = await firebase.messaging().getToken({ vapidKey: C.vapidKey, serviceWorkerRegistration: reg });
+
+    const res = await fetch(C.gasUrl, {         // no custom headers → no CORS preflight
+      method: 'POST',
+      body: JSON.stringify({ action: 'registerToken', email, password, token, device: navigator.userAgent.slice(0, 90) })
+    });
+    const out = await res.json();
+    if (!out.success) throw new Error(out.error || 'Could not save this device.');
+    say('Done. This phone will now get alerts for your steps.');
+  } catch (e) { say(e.message, true); }
+  $('go').disabled = false;
+};
+</script>
+</body>
+</html>
